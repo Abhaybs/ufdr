@@ -1,0 +1,6 @@
+-r requirements-phase2.txt
+numpy<2.0
+chromadb==0.4.24
+sentence-transformers==3.0.1
+google-generativeai==0.7.2
+pillow==10.4.0

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>UFDR Knowledge Graph</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+</head>
+<body>
+    <header>
+        <h1>Knowledge Graph Explorer</h1>
+        <nav>
+            <a href="index.html">Data Tables</a>
+            <a href="graph.html" aria-current="page">Knowledge Graph</a>
+        </nav>
+    </header>
+
+    <main>
+        <section>
+            <h2>Search Conversations</h2>
+            <form id="graph-form" class="controls">
+                <input type="text" id="graph-term" placeholder="Search by name, phone, or email" required>
+                <button type="submit">Find Connections</button>
+            </form>
+            <div id="graph-status" class="status"></div>
+            <div id="graph-container"></div>
+            <div id="graph-details" class="details-panel">Click a node to see details.</div>
+        </section>
+    </main>
+
+    <script src="js/graph.js"></script>
+</body>
+</html>

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>UFDR Forensic Viewer</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <header>
+        <h1>UFDR Forensic Viewer</h1>
+        <nav>
+            <a href="index.html" aria-current="page">Data Tables</a>
+            <a href="graph.html">Knowledge Graph</a>
+        </nav>
+    </header>
+
+    <main>
+        <section id="upload-section">
+            <h2>Upload UFDR Archive</h2>
+            <form id="upload-form">
+                <input type="file" id="ufdr-file" accept=".ufdr,.zip" required>
+                <button type="submit">Upload &amp; Parse</button>
+            </form>
+            <div id="upload-status" class="status"></div>
+        </section>
+
+        <section id="assistant-section">
+            <div class="section-head">
+                <h2>Investigative Assistant</h2>
+                <button type="button" id="chat-reset" class="button-secondary">New Conversation</button>
+            </div>
+            <div class="chat-layout">
+                <div class="chat-panel">
+                    <div id="chat-log" class="chat-log" aria-live="polite" aria-label="Chat transcript"></div>
+                    <form id="chat-form" class="chat-form">
+                        <textarea id="chat-input" rows="3" placeholder="Ask a question about the extracted data..." required></textarea>
+                        <button type="submit" id="chat-send">Send</button>
+                    </form>
+                    <div id="chat-status" class="status" role="status" aria-live="polite"></div>
+                </div>
+                <aside class="evidence-panel" aria-live="polite" aria-label="Supporting evidence">
+                    <h3>Supporting Evidence</h3>
+                    <div id="evidence-empty" class="empty-state">Ask a question to view retrieved evidence.</div>
+                    <ul id="evidence-list"></ul>
+                </aside>
+            </div>
+        </section>
+
+        <section id="messages-section">
+            <h2>Messages</h2>
+            <div class="controls">
+                <input type="text" id="message-search" placeholder="Search messages">
+                <button id="message-refresh">Refresh</button>
+            </div>
+            <table id="messages-table">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Sender</th>
+                        <th>Receiver</th>
+                        <th>Body</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </section>
+
+        <section id="contacts-section">
+            <h2>Contacts</h2>
+            <div class="controls">
+                <input type="text" id="contact-search" placeholder="Search contacts">
+                <button id="contact-refresh">Refresh</button>
+            </div>
+            <table id="contacts-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Phone</th>
+                        <th>Email</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </section>
+
+        <section id="system-info-section">
+            <h2>System Info</h2>
+            <table id="system-info-table">
+                <thead>
+                    <tr>
+                        <th>Key</th>
+                        <th>Value</th>
+                        <th>Category</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </section>
+    </main>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
