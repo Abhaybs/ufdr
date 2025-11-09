@@ -1,6 +1,6 @@
 # UFDR Forensic Analysis Toolkit
 
-This project implements a three-phase roadmap for building a streamlined UFDR (Universal Forensic Data Report) web application. The initial focus (Phase 1) covers uploading a UFDR archive, parsing core data sources, storing normalized datasets, and presenting the results via a lightweight frontend.
+This project implements a three-phase roadmap for building a streamlined UFDR (Universal Forensic Data Report) web application. Phase 1 covers ingesting UFDR archives and rendering core tables. Phase 2 layers on Neo4j graph exploration. Phase 3 adds semantic search with Gemini text and vision models.
 
 ## Project Structure
 
@@ -25,7 +25,30 @@ storage/     Working directory for uploaded archives, extracted files, and SQLit
    pip install -r backend/requirements.txt
    ```
 
-3. **Run the FastAPI server**:
+3. **Provision environment variables**
+
+Copy `.env.example` if present or set the following values in `.env`.
+
+```ini
+# Core storage and database settings (defaults are usually fine)
+STORAGE_DIR=storage
+
+# Gemini API (Phase 3)
+GEMINI_API_KEY=your_api_key
+GEMINI_MODEL_NAME=models/gemini-2.5-flash
+GEMINI_VISION_MODEL_NAME=models/gemini-2.5-flash-image
+
+# Neo4j (Phase 2) — leave NEO4J_ENABLED=false unless you have a live instance
+NEO4J_ENABLED=false
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=neo4j
+NEO4J_DATABASE=ufdr
+```
+
+Enable Gemini access in Google Cloud (Generative Language API) before running Phase 3 features.
+
+4. **Run the FastAPI server**:
 
    ```bash
    uvicorn app.main:app --reload --app-dir backend
@@ -33,7 +56,7 @@ storage/     Working directory for uploaded archives, extracted files, and SQLit
 
    The API will be available at `http://localhost:8000`.
 
-4. _(Optional for later phases)_ Install additional dependencies:
+5. _(Optional for later phases)_ Install additional dependencies:
 
    - **Phase 2 (Neo4j integration)**
 
@@ -61,7 +84,7 @@ storage/     Working directory for uploaded archives, extracted files, and SQLit
 
      > `chromadb` pulls in `chroma-hnswlib`, which requires Microsoft C++ Build Tools on Windows. Install the Build Tools from the [official download page](https://visualstudio.microsoft.com/visual-cpp-build-tools/) before running the Phase 3 install.
 
-5. **Serve the frontend** (simple option):
+6. **Serve the frontend** (simple option):
 
    ```bash
    python -m http.server 3000 --directory frontend
@@ -71,19 +94,69 @@ storage/     Working directory for uploaded archives, extracted files, and SQLit
 
    - Visit `http://localhost:3000/graph.html` for the Phase 2 knowledge-graph explorer (requires Neo4j).
 
-6. **Need sample data?** Generate a synthetic UFDR archive:
+7. **Need sample data?** Generate a synthetic UFDR archive:
 
    ```bash
-   python backend/scripts/create_sample_ufdr.py
+   python backend/scripts/create_sample_ufdr.py storage/sample_data/sample.ufdr
    ```
 
-   This produces `storage/sample_data/sample.ufdr`, which you can upload through the UI.
+   - Add real imagery for Gemini Vision:
 
-## Current Capabilities (Phase 1)
+     ```bash
+     python backend/scripts/create_sample_ufdr.py \
+       storage/sample_data/sample.ufdr \
+       --red-image "C:/path/to/photo-one.jpg" \
+       --blue-image "C:/path/to/photo-two.jpg"
+     ```
 
-## Phase 2 Smoke-Test Checklist
+   The script copies your media into `media/images/` inside the archive so Gemini can produce captions.
+
+8. **Ingest an archive**
+
+   - Upload in the UI (Data Tables → Upload) or call the API:
+
+     ```bash
+     curl -X POST http://127.0.0.1:8000/api/ingest/ufdr \
+       -H "Content-Type: multipart/form-data" \
+       -F "file=@storage/sample_data/sample.ufdr"
+     ```
+
+   - Watch the `uvicorn` console for Gemini caption logs. Successful rows appear in `storage/main.db` → `images` with `caption_status="done"`.
+
+9. **Ask questions with the assistant** (Phase 3)
+
+   ```bash
+   curl -X POST http://127.0.0.1:8000/api/query \
+     -H "Content-Type: application/json" \
+     -d '{"question":"Show me the red car photo"}'
+   ```
+
+   - The response `answer` references the relevant records and includes an evidence list.
+   - Set `include_images=true` in the payload if you need base64 thumbnails.
+
+10. **Inspect stored data**
+
+    ```bash
+    python - <<'PY'
+    import sqlite3
+    from pathlib import Path
+    conn = sqlite3.connect(Path("storage/main.db"))
+    cur = conn.cursor()
+    print(cur.execute("SELECT id, relative_path, description, tags, caption_status FROM images").fetchall())
+    conn.close()
+    PY
+    ```
+
+    - Delete old runs by removing `storage/main.db` and `storage/vector_store` before re-ingesting.
+    - The ingestion API always appends; clear tables if starting from zero.
+
+## Phase 2: Neo4j Graph Explorer
 
 - Regenerate or upload a UFDR archive (e.g. `python backend/scripts/create_sample_ufdr.py`).
+- Ensure Neo4j is running. Easiest local setup:
+  - Docker: `docker run --rm -it -p 7474:7474 -p 7687:7687 -e NEO4J_AUTH=neo4j/12345678 neo4j:5.22`.
+  - In the Neo4j browser execute `CREATE DATABASE ufdr IF NOT EXISTS;` and switch the primary database if required.
+- Set `NEO4J_ENABLED=true` in `.env` and restart `uvicorn`.
 - Start services:
   - `uvicorn app.main:app --reload --app-dir backend`
   - `python -m http.server 3000 --directory frontend`
@@ -109,6 +182,10 @@ storage/     Working directory for uploaded archives, extracted files, and SQLit
     python backend/scripts/graph_admin.py resync --clear-first
     ```
 
-- Capture screenshots/logs of the ingestion summary, data tables, and graph explorer for documentation.
-- Automate Gemini image descriptions and merge them into the search index.
-- Harden parsers for additional UFDR data formats and device-specific schemas.
+## Troubleshooting
+
+- **Gemini Vision returns `Unable to process input image`**: ensure images are >256×256 and visually meaningful. Replace synthetic 1×1 assets with real photos using the UFDR generator flags.
+- **Gemini errors `404 models/... not found`**: check `GEMINI_MODEL_NAME` and `GEMINI_VISION_MODEL_NAME` in `.env`. Use models available to your API key (`models/gemini-2.5-flash`, `models/gemini-2.5-flash-image` confirmed).
+- **Gemini quota exceeded**: upgrade your Google Cloud plan or wait for limits to reset; ingestion stores `caption_status` and `caption_error` for auditing.
+- **Neo4j connection refused**: set `NEO4J_ENABLED=false` if you do not have an instance running. When enabled, confirm port 7687 is accessible and credentials match `.env`.
+- **Frontend shows cached data**: hard refresh (`Ctrl+Shift+R`), or append `?v=2` to script URLs while developing.

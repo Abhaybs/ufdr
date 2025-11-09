@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import base64
 import plistlib
+import shutil
 import sqlite3
 import tempfile
 import zipfile
@@ -260,8 +261,17 @@ def create_sample_image_blue(path: Path) -> None:
     path.write_bytes(png_bytes)
 
 
-def build_archive(output_path: Path) -> Path:
+def build_archive(
+    output_path: Path,
+    red_image: Path | None = None,
+    blue_image: Path | None = None,
+) -> Path:
     """Builds the final .ufdr (zip) archive."""
+    if red_image and not red_image.is_file():
+        raise FileNotFoundError(f"Red image not found: {red_image}")
+    if blue_image and not blue_image.is_file():
+        raise FileNotFoundError(f"Blue image not found: {blue_image}")
+
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_root = Path(temp_dir)
 
@@ -286,8 +296,17 @@ def build_archive(output_path: Path) -> Path:
         create_system_plist(system_dir / "device_info.plist")
         
         # Create image files
-        create_sample_image_red(media_dir / "red-car.png")
-        create_sample_image_blue(media_dir / "blue-car.png") # New image
+        if red_image:
+            suffix = red_image.suffix or ".png"
+            shutil.copy2(red_image, media_dir / f"red-car{suffix}")
+        else:
+            create_sample_image_red(media_dir / "red-car.png")
+
+        if blue_image:
+            suffix = blue_image.suffix or ".png"
+            shutil.copy2(blue_image, media_dir / f"blue-car{suffix}")
+        else:
+            create_sample_image_blue(media_dir / "blue-car.png") # New image
 
         # Zip the contents
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -308,12 +327,22 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_OUTPUT,
         help=f"Destination UFDR archive (default: {DEFAULT_OUTPUT})",
     )
+    parser.add_argument(
+        "--red-image",
+        type=Path,
+        help="Path to a custom image to use instead of the synthetic red car",
+    )
+    parser.add_argument(
+        "--blue-image",
+        type=Path,
+        help="Path to a custom image to use instead of the synthetic blue car",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    archive_path = build_archive(args.output)
+    archive_path = build_archive(args.output, args.red_image, args.blue_image)
     print(f"Sample UFDR created at: {archive_path.resolve()}")
 
 
